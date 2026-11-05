@@ -16,3 +16,15 @@ m$means
 try(m$fit(D[c("X1", "X2")], D$Groupe[1:5]))
 try(m$fit(D, D$Groupe))
 try(m$priors <- 0)
+
+# ---- Etape 1.3 ----
+devtools::load_all()
+m <- ADL$new()$fit(D[c("X1", "X2")], D$Groupe)
+priv <- m$.__enclos_env__$private
+priv$FW
+priv$FWinv
+round(priv$FW %*% priv$FWinv, 10)
+
+D2 <- D
+D2$X3 <- 2 * D2$X1
+try(ADL$new()$fit(D2[c("X1", "X2", "X3")], D2$Groupe))

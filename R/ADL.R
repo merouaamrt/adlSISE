@@ -24,7 +24,6 @@ ADL <- R6::R6Class("ADL",
                        invisible(self)
                      },
 
-                     # NOUVEAU : apprentissage (partie 1)
                      fit = function(X, y) {
                        # 1. Verification des entrees
                        if (is.matrix(X)) X <- as.data.frame(X)
@@ -41,25 +40,40 @@ ADL <- R6::R6Class("ADL",
 
                        M <- as.matrix(X)
                        classes <- levels(y)
-                       g <- as.integer(y)               # numero de classe de chaque individu
-                       n_k <- tabulate(g, nbins = K)    # effectif de chaque classe
+                       g <- as.integer(y)
+                       n_k <- tabulate(g, nbins = K)
 
                        # 2. Probabilites a priori
                        pi_k <- private$compute_priors(n_k, classes)
 
-                       # 3. Moyennes conditionnelles (une ligne par classe)
+                       # 3. Moyennes conditionnelles
                        mu <- rowsum(M, g) / n_k
                        rownames(mu) <- classes
+
+                       # NOUVEAU - 4. Covariance intra-classes poolee W, en 1/(n - K)
+                       n <- nrow(M)
+                       if (n <= K) stop("Il faut plus d'observations que de classes.")
+                       centre <- M - mu[g, , drop = FALSE]
+                       W <- crossprod(centre) / (n - K)
+
+                       # NOUVEAU - 5. Inversion de W par Cholesky
+                       R <- tryCatch(chol(W), error = function(e) {
+                         stop("La matrice W n'est pas inversible : variables constantes ",
+                              "ou colineaires.", call. = FALSE)
+                       })
+                       W_inv <- chol2inv(R)
+                       dimnames(W_inv) <- dimnames(W)
 
                        # Memorisation
                        private$FClasses <- classes
                        private$FPriors <- stats::setNames(pi_k, classes)
                        private$FMeans <- mu
+                       private$FW <- W          # NOUVEAU
+                       private$FWinv <- W_inv   # NOUVEAU
                        invisible(self)
                      }
                    ),
 
-                   # NOUVEAU : proprietes en lecture seule
                    active = list(
                      priors = function() private$FPriors,
                      means = function() private$FMeans
@@ -69,11 +83,12 @@ ADL <- R6::R6Class("ADL",
                      FPriorsOption = NULL,
                      FSelection = NULL,
                      FAlpha = NULL,
-                     FClasses = NULL,   # NOUVEAU
-                     FPriors = NULL,    # NOUVEAU
-                     FMeans = NULL,     # NOUVEAU
+                     FClasses = NULL,
+                     FPriors = NULL,
+                     FMeans = NULL,
+                     FW = NULL,      # NOUVEAU
+                     FWinv = NULL,   # NOUVEAU
 
-                     # NOUVEAU : calcule les priors selon l'option choisie
                      compute_priors = function(n_k, classes) {
                        opt <- private$FPriorsOption
                        K <- length(classes)
