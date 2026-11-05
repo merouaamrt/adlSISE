@@ -71,6 +71,8 @@ ADL <- R6::R6Class("ADL",
                        colnames(coef) <- classes
 
                        # Memorisation
+                       private$FN <- n                    # NOUVEAU
+                       private$FNk <- stats::setNames(n_k, classes)   # NOUVEAU
                        private$FVarNames <- colnames(X)
                        private$FClasses <- classes
                        private$FPriors <- stats::setNames(pi_k, classes)
@@ -82,19 +84,40 @@ ADL <- R6::R6Class("ADL",
                        invisible(self)
                      },
 
-                     # NOUVEAU : prediction des classes
                      predict = function(X) {
                        S <- private$scores(X)
                        factor(private$FClasses[max.col(S, ties.method = "first")],
                               levels = private$FClasses)
                      },
 
-                     # NOUVEAU : probabilites d'appartenance (softmax des scores)
                      predict_proba = function(X) {
                        S <- private$scores(X)
-                       S <- S - apply(S, 1, max)   # stabilite numerique
+                       S <- S - apply(S, 1, max)
                        P <- exp(S)
                        P / rowSums(P)
+                     },
+
+                     # NOUVEAU : taux de bon classement
+                     score = function(X, y) {
+                       if (length(y) != nrow(X)) stop("X et y n'ont pas le meme nombre de lignes.")
+                       mean(as.character(self$predict(X)) == as.character(y))
+                     },
+
+                     # NOUVEAU : affichage du modele
+                     print = function(...) {
+                       if (!private$FFitted) {
+                         cat("Analyse Discriminante Lineaire (non entrainee)\n")
+                         cat("Appelez $fit(X, y) pour entrainer le modele.\n")
+                         return(invisible(self))
+                       }
+                       cat("Analyse Discriminante Lineaire\n\n")
+                       cat("Observations :", private$FN, "\n")
+                       cat("Variables    :", length(private$FVarNames), "\n")
+                       cat("Classes      :", paste0(private$FClasses, " (", private$FNk, ")",
+                                                    collapse = ", "), "\n\n")
+                       cat("Fonctions de classement :\n")
+                       print(round(private$FCoef, 6))
+                       invisible(self)
                      }
                    ),
 
@@ -110,6 +133,8 @@ ADL <- R6::R6Class("ADL",
                      FSelection = NULL,
                      FAlpha = NULL,
                      FFitted = FALSE,
+                     FN = NULL,          # NOUVEAU
+                     FNk = NULL,         # NOUVEAU
                      FVarNames = NULL,
                      FClasses = NULL,
                      FPriors = NULL,
@@ -129,7 +154,6 @@ ADL <- R6::R6Class("ADL",
                        as.numeric(opt)
                      },
 
-                     # NOUVEAU : scores des fonctions de classement (matrice n x K)
                      scores = function(X) {
                        if (!private$FFitted) {
                          stop("Le modele n'est pas entraine : appelez $fit() d'abord.")

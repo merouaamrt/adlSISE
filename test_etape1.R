@@ -62,3 +62,16 @@ max(abs(m2$predict_proba(iris[1:4]) - predict(ref, iris)$posterior))
 # protections
 try(ADL$new()$predict(iris[1:4]))
 try(m2$predict(iris[1:2]))
+
+# ---- Etape 1.6 ----
+devtools::load_all()
+m <- ADL$new()$fit(D[c("X1", "X2")], D$Groupe)
+m
+m$score(D[c("X1", "X2")], D$Groupe)
+
+m2 <- ADL$new()$fit(iris[1:4], iris$Species)
+print(m2)
+m2$score(iris[1:4], iris$Species)
+table(observe = iris$Species, predit = m2$predict(iris[1:4]))
+
+ADL$new()
