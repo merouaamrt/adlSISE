@@ -28,3 +28,12 @@ round(priv$FW %*% priv$FWinv, 10)
 D2 <- D
 D2$X3 <- 2 * D2$X1
 try(ADL$new()$fit(D2[c("X1", "X2", "X3")], D2$Groupe))
+
+
+
+
+# ---- Etape 1.4 ----
+devtools::load_all()
+m <- ADL$new()$fit(D[c("X1", "X2")], D$Groupe)
+round(m$coefficients, 6)
+m$classes

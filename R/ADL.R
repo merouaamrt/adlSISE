@@ -50,13 +50,13 @@ ADL <- R6::R6Class("ADL",
                        mu <- rowsum(M, g) / n_k
                        rownames(mu) <- classes
 
-                       # NOUVEAU - 4. Covariance intra-classes poolee W, en 1/(n - K)
+                       # 4. Covariance intra-classes poolee W, en 1/(n - K)
                        n <- nrow(M)
                        if (n <= K) stop("Il faut plus d'observations que de classes.")
                        centre <- M - mu[g, , drop = FALSE]
                        W <- crossprod(centre) / (n - K)
 
-                       # NOUVEAU - 5. Inversion de W par Cholesky
+                       # 5. Inversion de W par Cholesky
                        R <- tryCatch(chol(W), error = function(e) {
                          stop("La matrice W n'est pas inversible : variables constantes ",
                               "ou colineaires.", call. = FALSE)
@@ -64,30 +64,46 @@ ADL <- R6::R6Class("ADL",
                        W_inv <- chol2inv(R)
                        dimnames(W_inv) <- dimnames(W)
 
+                       # NOUVEAU - 6. Fonctions de classement
+                       # coefficients : W^-1 mu_k, une colonne par classe
+                       A <- W_inv %*% t(mu)
+                       # constantes : ln(pi_k) - 1/2 mu_k' W^-1 mu_k
+                       a0 <- log(pi_k) - 0.5 * colSums(t(mu) * A)
+                       coef <- rbind(constant = a0, A)
+                       colnames(coef) <- classes
+
                        # Memorisation
+                       private$FVarNames <- colnames(X)   # NOUVEAU
                        private$FClasses <- classes
                        private$FPriors <- stats::setNames(pi_k, classes)
                        private$FMeans <- mu
-                       private$FW <- W          # NOUVEAU
-                       private$FWinv <- W_inv   # NOUVEAU
+                       private$FW <- W
+                       private$FWinv <- W_inv
+                       private$FCoef <- coef              # NOUVEAU
+                       private$FFitted <- TRUE            # NOUVEAU
                        invisible(self)
                      }
                    ),
 
                    active = list(
+                     classes = function() private$FClasses,        # NOUVEAU
                      priors = function() private$FPriors,
-                     means = function() private$FMeans
+                     means = function() private$FMeans,
+                     coefficients = function() private$FCoef       # NOUVEAU
                    ),
 
                    private = list(
                      FPriorsOption = NULL,
                      FSelection = NULL,
                      FAlpha = NULL,
+                     FFitted = FALSE,    # NOUVEAU
+                     FVarNames = NULL,   # NOUVEAU
                      FClasses = NULL,
                      FPriors = NULL,
                      FMeans = NULL,
-                     FW = NULL,      # NOUVEAU
-                     FWinv = NULL,   # NOUVEAU
+                     FW = NULL,
+                     FWinv = NULL,
+                     FCoef = NULL,       # NOUVEAU
 
                      compute_priors = function(n_k, classes) {
                        opt <- private$FPriorsOption
