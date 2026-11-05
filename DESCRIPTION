@@ -12,3 +12,5 @@ Roxygen: list(markdown = TRUE)
 Imports: 
     R6,
     stats
+Suggests: 
+    MASS

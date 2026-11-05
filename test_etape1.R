@@ -37,3 +37,28 @@ devtools::load_all()
 m <- ADL$new()$fit(D[c("X1", "X2")], D$Groupe)
 round(m$coefficients, 6)
 m$classes
+
+
+
+
+# ---- Etape 1.5 ----
+devtools::load_all()
+m <- ADL$new()$fit(D[c("X1", "X2")], D$Groupe)
+
+# DATA 1 : predictions et probabilites
+m$predict(D[c("X1", "X2")])
+round(m$predict_proba(D[c("X1", "X2")]), 4)
+m$predict(D[1, c("X1", "X2")])          # un seul individu
+
+# iris : comparaison avec MASS::lda
+m2  <- ADL$new()$fit(iris[1:4], iris$Species)
+ref <- MASS::lda(Species ~ ., data = iris)
+p_adl  <- m2$predict(iris[1:4])
+p_mass <- predict(ref, iris)$class
+table(p_adl, p_mass)
+all(p_adl == p_mass)
+max(abs(m2$predict_proba(iris[1:4]) - predict(ref, iris)$posterior))
+
+# protections
+try(ADL$new()$predict(iris[1:4]))
+try(m2$predict(iris[1:2]))

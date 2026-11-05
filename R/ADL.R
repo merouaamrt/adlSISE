@@ -64,46 +64,59 @@ ADL <- R6::R6Class("ADL",
                        W_inv <- chol2inv(R)
                        dimnames(W_inv) <- dimnames(W)
 
-                       # NOUVEAU - 6. Fonctions de classement
-                       # coefficients : W^-1 mu_k, une colonne par classe
+                       # 6. Fonctions de classement
                        A <- W_inv %*% t(mu)
-                       # constantes : ln(pi_k) - 1/2 mu_k' W^-1 mu_k
                        a0 <- log(pi_k) - 0.5 * colSums(t(mu) * A)
                        coef <- rbind(constant = a0, A)
                        colnames(coef) <- classes
 
                        # Memorisation
-                       private$FVarNames <- colnames(X)   # NOUVEAU
+                       private$FVarNames <- colnames(X)
                        private$FClasses <- classes
                        private$FPriors <- stats::setNames(pi_k, classes)
                        private$FMeans <- mu
                        private$FW <- W
                        private$FWinv <- W_inv
-                       private$FCoef <- coef              # NOUVEAU
-                       private$FFitted <- TRUE            # NOUVEAU
+                       private$FCoef <- coef
+                       private$FFitted <- TRUE
                        invisible(self)
+                     },
+
+                     # NOUVEAU : prediction des classes
+                     predict = function(X) {
+                       S <- private$scores(X)
+                       factor(private$FClasses[max.col(S, ties.method = "first")],
+                              levels = private$FClasses)
+                     },
+
+                     # NOUVEAU : probabilites d'appartenance (softmax des scores)
+                     predict_proba = function(X) {
+                       S <- private$scores(X)
+                       S <- S - apply(S, 1, max)   # stabilite numerique
+                       P <- exp(S)
+                       P / rowSums(P)
                      }
                    ),
 
                    active = list(
-                     classes = function() private$FClasses,        # NOUVEAU
+                     classes = function() private$FClasses,
                      priors = function() private$FPriors,
                      means = function() private$FMeans,
-                     coefficients = function() private$FCoef       # NOUVEAU
+                     coefficients = function() private$FCoef
                    ),
 
                    private = list(
                      FPriorsOption = NULL,
                      FSelection = NULL,
                      FAlpha = NULL,
-                     FFitted = FALSE,    # NOUVEAU
-                     FVarNames = NULL,   # NOUVEAU
+                     FFitted = FALSE,
+                     FVarNames = NULL,
                      FClasses = NULL,
                      FPriors = NULL,
                      FMeans = NULL,
                      FW = NULL,
                      FWinv = NULL,
-                     FCoef = NULL,       # NOUVEAU
+                     FCoef = NULL,
 
                      compute_priors = function(n_k, classes) {
                        opt <- private$FPriorsOption
@@ -114,6 +127,22 @@ ADL <- R6::R6Class("ADL",
                          stop("'priors' doit contenir une valeur par classe (", K, ").")
                        }
                        as.numeric(opt)
+                     },
+
+                     # NOUVEAU : scores des fonctions de classement (matrice n x K)
+                     scores = function(X) {
+                       if (!private$FFitted) {
+                         stop("Le modele n'est pas entraine : appelez $fit() d'abord.")
+                       }
+                       if (is.matrix(X)) X <- as.data.frame(X)
+                       if (!is.data.frame(X)) stop("X doit etre un data.frame.")
+                       manquantes <- setdiff(private$FVarNames, colnames(X))
+                       if (length(manquantes) > 0) {
+                         stop("Colonnes absentes de X : ", paste(manquantes, collapse = ", "))
+                       }
+                       M <- as.matrix(X[, private$FVarNames, drop = FALSE])
+                       if (anyNA(M)) stop("X contient des valeurs manquantes.")
+                       cbind(1, M) %*% private$FCoef
                      }
                    )
 )
