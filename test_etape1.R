@@ -75,3 +75,22 @@ m2$score(iris[1:4], iris$Species)
 table(observe = iris$Species, predit = m2$predict(iris[1:4]))
 
 ADL$new()
+
+
+
+# ---- Etape 1.7a : Encodeur ----
+devtools::load_all()
+X <- data.frame(age = c(20, 35, 50, 41),
+                couleur = c("bleu", "rouge", "vert", "rouge"))
+
+enc <- Encodeur$new()
+enc$fit(X)
+enc$categories
+enc$transform(X)
+
+# comparaison avec model.matrix de R
+all(enc$transform(X) == model.matrix(~ age + couleur, X)[, -1])
+
+enc$transform(X[2, ])                                   # un seul individu
+enc$transform(data.frame(age = 30, couleur = "jaune"))  # modalite inconnue
+try(enc$transform(data.frame(age = 30)))                # colonne manquante
