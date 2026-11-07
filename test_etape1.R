@@ -140,3 +140,183 @@ mg$score(Xg, yg)
 num <- paste0("V", 1:20)
 system.time(ADL$new()$fit(Xg[num], yg))
 system.time(MASS::lda(x = as.matrix(Xg[num]), grouping = yg))
+
+
+
+
+
+
+# ---- Etape 2.1a : Lambda de Wilks ----
+devtools::load_all()
+
+# DATA 1 : W vient de notre classe, V est la covariance totale
+m <- ADL$new()$fit(D[c("X1", "X2")], D$Groupe)
+W1 <- m$.__enclos_env__$private$FW
+V1 <- cov(D[c("X1", "X2")])
+wilks_test(W1, V1, n = 11, K = 2)
+
+# iris (3 classes) : comparaison avec la MANOVA officielle de R
+m2 <- ADL$new()$fit(iris[1:4], iris$Species)
+W2 <- m2$.__enclos_env__$private$FW
+V2 <- cov(iris[1:4])
+wilks_test(W2, V2, n = 150, K = 3)
+summary(manova(as.matrix(iris[1:4]) ~ iris$Species), test = "Wilks")
+
+
+
+
+
+
+
+
+# ---- Etape 2.1b : Wilks dans ADL ----
+devtools::load_all()
+m <- ADL$new()$fit(D[c("X1", "X2")], D$Groupe)
+m$wilks
+
+m2 <- ADL$new()$fit(iris[1:4], iris$Species)
+m2$wilks$lambda
+m2$wilks$p_value
+
+# avec une variable qualitative
+m3 <- ADL$new()$fit(warpbreaks[c("breaks", "wool")], warpbreaks$tension)
+m3$wilks$lambda
+
+
+
+
+
+
+
+
+
+
+# ---- Etape 2.2 : test F de chaque variable ----
+devtools::load_all()
+m <- ADL$new()$fit(D[c("X1", "X2")], D$Groupe)
+m$variable_tests
+
+m2 <- ADL$new()$fit(iris[1:4], iris$Species)
+round(m2$variable_tests, 5)
+
+m3 <- ADL$new()$fit(warpbreaks[c("breaks", "wool")], warpbreaks$tension)
+round(m3$variable_tests, 5)
+
+
+
+
+
+
+
+
+# ---- Etape 2.V : validation croisee ----
+devtools::load_all()
+
+# iris, 5 plis
+cv <- ADL$new()$cross_validate(iris[1:4], iris$Species, folds = 5, seed = 1)
+cv
+
+# leave-one-out : comparaison avec MASS::lda(CV = TRUE)
+loo <- ADL$new()$cross_validate(iris[1:4], iris$Species, folds = 150)
+loo$accuracy
+mean(MASS::lda(Species ~ ., data = iris, CV = TRUE)$class == iris$Species)
+
+# warpbreaks : score optimiste contre validation croisee
+X3 <- warpbreaks[c("breaks", "wool")]
+ADL$new()$fit(X3, warpbreaks$tension)$score(X3, warpbreaks$tension)
+ADL$new()$cross_validate(X3, warpbreaks$tension, folds = 5, seed = 1)$accuracy
+
+
+
+
+# ---- Etape 2.3 : selection forward ----
+devtools::load_all()
+priv <- function(m) m$.__enclos_env__$private
+
+# iris
+m2 <- ADL$new()$fit(iris[1:4], iris$Species)
+forward_selection(priv(m2)$FW, priv(m2)$FV, n = 150, K = 3, alpha = 0.05)
+
+# verification : a l'etape 1, F = F de l'ANOVA a un facteur
+summary(aov(Petal.Length ~ Species, data = iris))
+
+# DATA 1, avec alpha = 0.05 puis alpha = 0.10
+m <- ADL$new()$fit(D[c("X1", "X2")], D$Groupe)
+forward_selection(priv(m)$FW, priv(m)$FV, n = 11, K = 2, alpha = 0.05)
+forward_selection(priv(m)$FW, priv(m)$FV, n = 11, K = 2, alpha = 0.10)
+
+
+
+
+
+
+# ---- Etape 2.4 : selection backward ----
+devtools::load_all()
+priv <- function(m) m$.__enclos_env__$private
+
+# DATA 1 : backward doit garder X1 et X2 (contrairement a forward)
+m <- ADL$new()$fit(D[c("X1", "X2")], D$Groupe)
+backward_selection(priv(m)$FW, priv(m)$FV, n = 11, K = 2, alpha = 0.05)
+
+# iris : alpha = 0.05 puis alpha = 0.01
+m2 <- ADL$new()$fit(iris[1:4], iris$Species)
+backward_selection(priv(m2)$FW, priv(m2)$FV, n = 150, K = 3, alpha = 0.05)
+backward_selection(priv(m2)$FW, priv(m2)$FV, n = 150, K = 3, alpha = 0.01)
+
+# warpbreaks : la laine doit etre retiree
+m3 <- ADL$new()$fit(warpbreaks[c("breaks", "wool")], warpbreaks$tension)
+backward_selection(priv(m3)$FW, priv(m3)$FV, n = 54, K = 3, alpha = 0.05)
+
+
+
+
+# ---- Etape 2.4b : selection dans fit ----
+devtools::load_all()
+
+# 1. sans selection : toujours les coefficients du livre
+round(ADL$new()$fit(D[c("X1", "X2")], D$Groupe)$coefficients, 6)
+
+# 2. DATA 1 en backward : garde X1 et X2
+mb <- ADL$new(selection = "backward")$fit(D[c("X1", "X2")], D$Groupe)
+mb$selected_variables
+
+# 3. DATA 1 en forward : aucune variable -> message clair
+try(ADL$new(selection = "forward")$fit(D[c("X1", "X2")], D$Groupe))
+
+# 4. iris en backward, alpha = 0.01 : Sepal.Length retiree
+mi <- ADL$new(selection = "backward", alpha = 0.01)$fit(iris[1:4], iris$Species)
+mi
+mi$selection_history
+# le modele doit etre identique a un modele appris directement sur les 3 variables
+all.equal(mi$coefficients,
+          ADL$new()$fit(iris[c("Sepal.Width", "Petal.Length", "Petal.Width")],
+                        iris$Species)$coefficients)
+mi$score(iris[1:4], iris$Species)
+
+# 5. warpbreaks en backward : seule breaks est gardee
+mw <- ADL$new(selection = "backward")$fit(warpbreaks[c("breaks", "wool")],
+                                          warpbreaks$tension)
+mw$selected_variables
+mw$predict(data.frame(breaks = 30, wool = "B"))
+
+# 6. validation croisee avec selection
+ADL$new(selection = "backward", alpha = 0.01)$cross_validate(
+  iris[1:4], iris$Species, folds = 5, seed = 1)$accuracy
+
+
+
+
+# ---- Etape 2.5 : summary ----
+devtools::load_all()
+
+# DATA 1 : a comparer avec le livre p. 66 (figure 24)
+ADL$new()$fit(D[c("X1", "X2")], D$Groupe)$summary()
+
+# iris avec selection backward
+ADL$new(selection = "backward", alpha = 0.01)$fit(iris[1:4], iris$Species)$summary()
+
+# warpbreaks : variable numerique + qualitative
+ADL$new()$fit(warpbreaks[c("breaks", "wool")], warpbreaks$tension)$summary()
+
+# modele non entraine
+ADL$new()$summary()
