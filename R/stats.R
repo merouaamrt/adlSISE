@@ -1,0 +1,29 @@
+# Lambda de Wilks et test F de Rao (livre PADL, p. 60-62)
+# W : covariance intra-classes (en 1/(n - K))
+# V : covariance totale (en 1/(n - 1))
+# n : nombre d'observations, K : nombre de classes
+#' @noRd
+wilks_test <- function(W, V, n, K) {
+  p <- ncol(W)
+
+  # versions biaisees (divisees par n), comme dans le livre
+  Wb <- (n - K) / n * W
+  Vb <- (n - 1) / n * V
+
+  # lambda = det(Wb) / det(Vb), calcule avec les logarithmes (plus precis)
+  log_lambda <- determinant(Wb, logarithm = TRUE)$modulus -
+    determinant(Vb, logarithm = TRUE)$modulus
+  lambda <- exp(as.numeric(log_lambda))
+
+  # transformation de Rao
+  A <- n - K - (p - K + 2) / 2
+  B <- p^2 + (K - 1)^2 - 5
+  B <- if (B > 0) sqrt((p^2 * (K - 1)^2 - 4) / B) else 1
+  C <- (p * (K - 1) - 2) / 2
+  df1 <- p * (K - 1)
+  df2 <- A * B - C
+  F_rao <- (1 - lambda^(1 / B)) / lambda^(1 / B) * df2 / df1
+
+  list(lambda = lambda, F = F_rao, df1 = df1, df2 = df2,
+       p_value = stats::pf(F_rao, df1, df2, lower.tail = FALSE))
+}

@@ -140,3 +140,24 @@ mg$score(Xg, yg)
 num <- paste0("V", 1:20)
 system.time(ADL$new()$fit(Xg[num], yg))
 system.time(MASS::lda(x = as.matrix(Xg[num]), grouping = yg))
+
+
+
+
+
+
+# ---- Etape 2.1a : Lambda de Wilks ----
+devtools::load_all()
+
+# DATA 1 : W vient de notre classe, V est la covariance totale
+m <- ADL$new()$fit(D[c("X1", "X2")], D$Groupe)
+W1 <- m$.__enclos_env__$private$FW
+V1 <- cov(D[c("X1", "X2")])
+wilks_test(W1, V1, n = 11, K = 2)
+
+# iris (3 classes) : comparaison avec la MANOVA officielle de R
+m2 <- ADL$new()$fit(iris[1:4], iris$Species)
+W2 <- m2$.__enclos_env__$private$FW
+V2 <- cov(iris[1:4])
+wilks_test(W2, V2, n = 150, K = 3)
+summary(manova(as.matrix(iris[1:4]) ~ iris$Species), test = "Wilks")
