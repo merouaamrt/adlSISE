@@ -201,3 +201,27 @@ round(m2$variable_tests, 5)
 
 m3 <- ADL$new()$fit(warpbreaks[c("breaks", "wool")], warpbreaks$tension)
 round(m3$variable_tests, 5)
+
+
+
+
+
+
+
+
+# ---- Etape 2.V : validation croisee ----
+devtools::load_all()
+
+# iris, 5 plis
+cv <- ADL$new()$cross_validate(iris[1:4], iris$Species, folds = 5, seed = 1)
+cv
+
+# leave-one-out : comparaison avec MASS::lda(CV = TRUE)
+loo <- ADL$new()$cross_validate(iris[1:4], iris$Species, folds = 150)
+loo$accuracy
+mean(MASS::lda(Species ~ ., data = iris, CV = TRUE)$class == iris$Species)
+
+# warpbreaks : score optimiste contre validation croisee
+X3 <- warpbreaks[c("breaks", "wool")]
+ADL$new()$fit(X3, warpbreaks$tension)$score(X3, warpbreaks$tension)
+ADL$new()$cross_validate(X3, warpbreaks$tension, folds = 5, seed = 1)$accuracy

@@ -109,6 +109,40 @@ ADL <- R6::R6Class("ADL",
                        if (length(y) != nrow(X)) stop("X et y n'ont pas le meme nombre de lignes.")
                        mean(as.character(self$predict(X)) == as.character(y))
                      },
+                     # Validation croisee stratifiee : score moyen sur des donnees non vues
+                     cross_validate = function(X, y, folds = 5, seed = NULL) {
+                       if (is.matrix(X)) X <- as.data.frame(X)
+                       y <- as.factor(y)
+                       n <- nrow(X)
+                       if (length(y) != n) stop("X et y n'ont pas le meme nombre de lignes.")
+                       if (folds < 2 || folds > n) {
+                         stop("'folds' doit etre compris entre 2 et le nombre d'observations.")
+                       }
+                       if (!is.null(seed)) set.seed(seed)
+
+                       # numero de pli de chaque individu, en gardant les proportions des classes
+                       if (folds == n) {
+                         groupe <- seq_len(n)                       # leave-one-out
+                       } else {
+                         groupe <- integer(n)
+                         for (classe in levels(y)) {
+                           ind <- which(y == classe)
+                           groupe[ind] <- sample(rep(seq_len(folds), length.out = length(ind)))
+                         }
+                       }
+
+                       # pour chaque pli : apprendre sur les autres, tester sur celui-ci
+                       scores <- vapply(seq_len(folds), function(f) {
+                         test <- groupe == f
+                         modele <- ADL$new(priors = private$FPriorsOption,
+                                           selection = private$FSelection,
+                                           alpha = private$FAlpha)
+                         modele$fit(X[!test, , drop = FALSE], y[!test])
+                         modele$score(X[test, , drop = FALSE], y[test])
+                       }, numeric(1))
+
+                       list(scores = scores, accuracy = mean(scores), error = 1 - mean(scores))
+                     },
 
                      print = function(...) {
                        if (!private$FFitted) {

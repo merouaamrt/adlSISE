@@ -59,3 +59,8 @@ variable_tests <- function(W_inv, V, n, K, lambda) {
     row.names = colnames(W_inv)
   )
 }
+
+
+
+
+
