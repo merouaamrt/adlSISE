@@ -225,3 +225,22 @@ mean(MASS::lda(Species ~ ., data = iris, CV = TRUE)$class == iris$Species)
 X3 <- warpbreaks[c("breaks", "wool")]
 ADL$new()$fit(X3, warpbreaks$tension)$score(X3, warpbreaks$tension)
 ADL$new()$cross_validate(X3, warpbreaks$tension, folds = 5, seed = 1)$accuracy
+
+
+
+
+# ---- Etape 2.3 : selection forward ----
+devtools::load_all()
+priv <- function(m) m$.__enclos_env__$private
+
+# iris
+m2 <- ADL$new()$fit(iris[1:4], iris$Species)
+forward_selection(priv(m2)$FW, priv(m2)$FV, n = 150, K = 3, alpha = 0.05)
+
+# verification : a l'etape 1, F = F de l'ANOVA a un facteur
+summary(aov(Petal.Length ~ Species, data = iris))
+
+# DATA 1, avec alpha = 0.05 puis alpha = 0.10
+m <- ADL$new()$fit(D[c("X1", "X2")], D$Groupe)
+forward_selection(priv(m)$FW, priv(m)$FV, n = 11, K = 2, alpha = 0.05)
+forward_selection(priv(m)$FW, priv(m)$FV, n = 11, K = 2, alpha = 0.10)
