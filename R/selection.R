@@ -50,3 +50,48 @@ forward_selection <- function(W, V, n, K, alpha = 0.05) {
 
   list(selected = noms[choisies], history = historique)
 }
+
+
+
+
+
+# Selection backward (livre PADL, p. 94-96)
+# On retire a chaque etape la variable de plus petit F, tant que p-value > alpha
+#' @noRd
+backward_selection <- function(W, V, n, K, alpha = 0.05) {
+  p <- ncol(W)
+  noms <- colnames(W)
+  Wb <- (n - K) / n * W
+  Vb <- (n - 1) / n * V
+
+  gardees <- seq_len(p)                    # on part de toutes les variables
+  lambda <- lambda_subset(Wb, Vb, gardees)
+  historique <- NULL
+
+  while (length(gardees) > 0) {
+    q <- length(gardees)
+
+    # lambda du modele si on retire chaque variable
+    lambda_sans <- vapply(gardees,
+                          function(j) lambda_subset(Wb, Vb, setdiff(gardees, j)),
+                          numeric(1))
+    F_val <- (n - K - q + 1) / (K - 1) * (lambda_sans / lambda - 1)
+    p_val <- stats::pf(F_val, K - 1, n - K - q + 1, lower.tail = FALSE)
+
+    pire <- which.min(F_val)
+    if (p_val[pire] <= alpha) break       # regle d'arret : elle est utile
+
+    historique <- rbind(historique, data.frame(
+      step       = p - q + 1,
+      variable   = noms[gardees[pire]],
+      Wilks.L    = lambda_sans[pire],
+      R2.partiel = 1 - lambda / lambda_sans[pire],
+      F          = F_val[pire],
+      p.value    = p_val[pire]
+    ))
+    lambda <- lambda_sans[pire]
+    gardees <- gardees[-pire]
+  }
+
+  list(selected = noms[gardees], history = historique)
+}

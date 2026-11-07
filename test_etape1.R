@@ -244,3 +244,25 @@ summary(aov(Petal.Length ~ Species, data = iris))
 m <- ADL$new()$fit(D[c("X1", "X2")], D$Groupe)
 forward_selection(priv(m)$FW, priv(m)$FV, n = 11, K = 2, alpha = 0.05)
 forward_selection(priv(m)$FW, priv(m)$FV, n = 11, K = 2, alpha = 0.10)
+
+
+
+
+
+
+# ---- Etape 2.4 : selection backward ----
+devtools::load_all()
+priv <- function(m) m$.__enclos_env__$private
+
+# DATA 1 : backward doit garder X1 et X2 (contrairement a forward)
+m <- ADL$new()$fit(D[c("X1", "X2")], D$Groupe)
+backward_selection(priv(m)$FW, priv(m)$FV, n = 11, K = 2, alpha = 0.05)
+
+# iris : alpha = 0.05 puis alpha = 0.01
+m2 <- ADL$new()$fit(iris[1:4], iris$Species)
+backward_selection(priv(m2)$FW, priv(m2)$FV, n = 150, K = 3, alpha = 0.05)
+backward_selection(priv(m2)$FW, priv(m2)$FV, n = 150, K = 3, alpha = 0.01)
+
+# warpbreaks : la laine doit etre retiree
+m3 <- ADL$new()$fit(warpbreaks[c("breaks", "wool")], warpbreaks$tension)
+backward_selection(priv(m3)$FW, priv(m3)$FV, n = 54, K = 3, alpha = 0.05)
