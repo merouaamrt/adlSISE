@@ -75,3 +75,45 @@ m2$score(iris[1:4], iris$Species)
 table(observe = iris$Species, predit = m2$predict(iris[1:4]))
 
 ADL$new()
+
+
+
+# ---- Etape 1.7a : Encodeur ----
+devtools::load_all()
+X <- data.frame(age = c(20, 35, 50, 41),
+                couleur = c("bleu", "rouge", "vert", "rouge"))
+
+enc <- Encodeur$new()
+enc$fit(X)
+enc$categories
+enc$transform(X)
+
+# comparaison avec model.matrix de R
+all(enc$transform(X) == model.matrix(~ age + couleur, X)[, -1])
+
+enc$transform(X[2, ])                                   # un seul individu
+enc$transform(data.frame(age = 30, couleur = "jaune"))  # modalite inconnue
+try(enc$transform(data.frame(age = 30)))                # colonne manquante
+
+
+
+
+# ---- Etape 1.7b : ADL avec variables qualitatives ----
+devtools::load_all()
+str(warpbreaks)
+
+m3 <- ADL$new()$fit(warpbreaks[c("breaks", "wool")], warpbreaks$tension)
+m3
+
+ref3 <- MASS::lda(tension ~ breaks + wool, data = warpbreaks)
+p3 <- m3$predict(warpbreaks[c("breaks", "wool")])
+all(p3 == predict(ref3, warpbreaks)$class)
+max(abs(m3$predict_proba(warpbreaks[c("breaks", "wool")]) -
+          predict(ref3, warpbreaks)$posterior))
+
+m3$predict(data.frame(breaks = 30, wool = "B"))   # un seul individu
+m3$predict(data.frame(breaks = 30, wool = "C"))   # modalite inconnue
+
+# on n'a rien casse : DATA 1 et iris
+round(ADL$new()$fit(D[c("X1", "X2")], D$Groupe)$coefficients, 6)
+ADL$new()$fit(iris[1:4], iris$Species)$score(iris[1:4], iris$Species)
