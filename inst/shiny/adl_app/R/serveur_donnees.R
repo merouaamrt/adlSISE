@@ -121,4 +121,7 @@ serveur_principal <- function(input, output, session) {
   serveur_variables(input, session, donnees)
   resultat <- serveur_analyse(input, session, donnees)
   serveur_alerte(output, lecture, resultat)
+  serveur_resultats(output, resultat)
+  cv <- serveur_validation_croisee(input, output, resultat)
+  serveur_illustratives(input, output, resultat)
 }
