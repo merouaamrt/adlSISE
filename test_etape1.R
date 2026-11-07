@@ -181,3 +181,23 @@ m2$wilks$p_value
 # avec une variable qualitative
 m3 <- ADL$new()$fit(warpbreaks[c("breaks", "wool")], warpbreaks$tension)
 m3$wilks$lambda
+
+
+
+
+
+
+
+
+
+
+# ---- Etape 2.2 : test F de chaque variable ----
+devtools::load_all()
+m <- ADL$new()$fit(D[c("X1", "X2")], D$Groupe)
+m$variable_tests
+
+m2 <- ADL$new()$fit(iris[1:4], iris$Species)
+round(m2$variable_tests, 5)
+
+m3 <- ADL$new()$fit(warpbreaks[c("breaks", "wool")], warpbreaks$tension)
+round(m3$variable_tests, 5)

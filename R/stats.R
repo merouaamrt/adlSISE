@@ -34,3 +34,28 @@ wilks_test <- function(W, V, n, K) {
        bartlett_df = df1,
        bartlett_p_value = stats::pchisq(chi2, df1, lower.tail = FALSE))
 }
+
+
+
+
+
+
+# Test F de chaque variable (livre PADL, p. 64-66)
+# Pour chaque variable : lambda sans la variable, lambda partiel, F, p-value
+# Raccourci : lambda partiel = (n-K)/(n-1) * diag(V^-1) / diag(W^-1)
+#' @noRd
+variable_tests <- function(W_inv, V, n, K, lambda) {
+  p <- ncol(W_inv)
+  V_inv <- chol2inv(chol(V))
+  partial <- (n - K) / (n - 1) * diag(V_inv) / diag(W_inv)
+  df1 <- K - 1
+  df2 <- n - K - p + 1
+  F_val <- df2 / df1 * (1 / partial - 1)
+  data.frame(
+    Wilks.L   = lambda / partial,
+    Partial.L = partial,
+    F         = F_val,
+    p.value   = stats::pf(F_val, df1, df2, lower.tail = FALSE),
+    row.names = colnames(W_inv)
+  )
+}
