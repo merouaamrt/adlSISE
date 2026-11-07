@@ -29,16 +29,16 @@ ADL <- R6::R6Class("ADL",
                        if (is.matrix(X)) X <- as.data.frame(X)
                        if (!is.data.frame(X)) stop("X doit etre un data.frame.")
                        if (anyNA(X)) stop("X contient des valeurs manquantes.")
-                       if (!all(vapply(X, is.numeric, logical(1)))) {
-                         stop("Pour l'instant, seules les variables quantitatives sont acceptees.")
-                       }
                        y <- droplevels(as.factor(y))
                        if (length(y) != nrow(X)) stop("X et y n'ont pas le meme nombre de lignes.")
                        if (anyNA(y)) stop("y contient des valeurs manquantes.")
                        K <- nlevels(y)
                        if (K < 2) stop("y doit comporter au moins 2 classes.")
 
-                       M <- as.matrix(X)
+                       # NOUVEAU (1) - recodage des qualitatives par l'Encodeur
+                       private$FEncodeur <- Encodeur$new()
+                       M <- private$FEncodeur$fit_transform(X)
+
                        classes <- levels(y)
                        g <- as.integer(y)
                        n_k <- tabulate(g, nbins = K)
@@ -71,8 +71,8 @@ ADL <- R6::R6Class("ADL",
                        colnames(coef) <- classes
 
                        # Memorisation
-                       private$FN <- n                    # NOUVEAU
-                       private$FNk <- stats::setNames(n_k, classes)   # NOUVEAU
+                       private$FN <- n
+                       private$FNk <- stats::setNames(n_k, classes)
                        private$FVarNames <- colnames(X)
                        private$FClasses <- classes
                        private$FPriors <- stats::setNames(pi_k, classes)
@@ -97,13 +97,11 @@ ADL <- R6::R6Class("ADL",
                        P / rowSums(P)
                      },
 
-                     # NOUVEAU : taux de bon classement
                      score = function(X, y) {
                        if (length(y) != nrow(X)) stop("X et y n'ont pas le meme nombre de lignes.")
                        mean(as.character(self$predict(X)) == as.character(y))
                      },
 
-                     # NOUVEAU : affichage du modele
                      print = function(...) {
                        if (!private$FFitted) {
                          cat("Analyse Discriminante Lineaire (non entrainee)\n")
@@ -133,8 +131,9 @@ ADL <- R6::R6Class("ADL",
                      FSelection = NULL,
                      FAlpha = NULL,
                      FFitted = FALSE,
-                     FN = NULL,          # NOUVEAU
-                     FNk = NULL,         # NOUVEAU
+                     FEncodeur = NULL,   # NOUVEAU (2)
+                     FN = NULL,
+                     FNk = NULL,
                      FVarNames = NULL,
                      FClasses = NULL,
                      FPriors = NULL,
@@ -164,8 +163,9 @@ ADL <- R6::R6Class("ADL",
                        if (length(manquantes) > 0) {
                          stop("Colonnes absentes de X : ", paste(manquantes, collapse = ", "))
                        }
-                       M <- as.matrix(X[, private$FVarNames, drop = FALSE])
-                       if (anyNA(M)) stop("X contient des valeurs manquantes.")
+                       if (anyNA(X[private$FVarNames])) stop("X contient des valeurs manquantes.")
+                       # NOUVEAU (3) - meme recodage qu'au fit
+                       M <- private$FEncodeur$transform(X)
                        cbind(1, M) %*% private$FCoef
                      }
                    )
