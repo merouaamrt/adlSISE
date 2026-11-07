@@ -1,3 +1,6 @@
+# Selection pas a pas des variables (forward / backward) a partir du lambda de Wilks.
+# Utilisee par ADL$fit() quand selection != "none".
+
 # Lambda de Wilks d'un sous-ensemble de variables s
 # (Wb, Vb : matrices biaisees calculees une seule fois sur toutes les variables)
 #' @noRd

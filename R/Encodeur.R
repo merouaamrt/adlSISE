@@ -1,10 +1,35 @@
 #' Categorical encoder (dummy coding)
+#'
+#' @description
+#' R6 class that recodes the qualitative columns of a data frame into 0/1
+#' dummy variables, so that they can be used by [ADL]. Each qualitative
+#' variable with \eqn{m} levels becomes \eqn{m - 1} indicator columns named
+#' `<variable>_<level>`; the first level is the reference and is dropped.
+#' Numeric columns are kept unchanged. The levels learned by `$fit()` are
+#' reused by `$transform()`, so new data are encoded the same way.
+#'
+#' @field categories Named list giving, for each column, the levels of the
+#'   qualitative variables (`NULL` for numeric columns) (read-only).
+#'
+#' @examples
+#' enc <- Encodeur$new()
+#' M <- enc$fit_transform(iris)
+#' head(M)
+#' enc$categories$Species
+#'
+#' # the same encoding is applied to new data
+#' enc$transform(iris[c(1, 51, 101), ])
 #' @export
 Encodeur <- R6::R6Class("Encodeur",
                         public = list(
 
-                          # memorise les modalites de chaque variable qualitative
+                          #' @description Learn the levels of each qualitative
+                          #'   column.
+                          #' @param X Data frame (or matrix) to encode. Each
+                          #'   qualitative column must have at least 2 levels.
+                          #' @return The `Encodeur` object itself, invisibly.
                           fit = function(X) {
+                            # memorise les modalites de chaque variable qualitative
                             if (is.matrix(X)) X <- as.data.frame(X)
                             if (!is.data.frame(X)) stop("X doit etre un data.frame.")
                             private$FCategories <- lapply(X, function(col) {
@@ -20,8 +45,15 @@ Encodeur <- R6::R6Class("Encodeur",
                             invisible(self)
                           },
 
-                          # cree la matrice numerique avec les indicatrices 0/1
+                          #' @description Encode a data frame with the levels
+                          #'   learned by `$fit()`. Unknown levels give a warning
+                          #'   and are treated as the reference level.
+                          #' @param X Data frame (or matrix) containing the
+                          #'   columns seen by `$fit()`.
+                          #' @return A numeric matrix: numeric columns unchanged
+                          #'   and one 0/1 column per non-reference level.
                           transform = function(X) {
+                            # cree la matrice numerique avec les indicatrices 0/1
                             if (!private$FFitted) {
                               stop("L'encodeur n'est pas entraine : appelez $fit() d'abord.")
                             }
@@ -35,8 +67,13 @@ Encodeur <- R6::R6Class("Encodeur",
                             do.call(cbind, blocs)
                           },
 
-                          # fit puis transform en une seule fois
+                          #' @description Learn the levels and encode the same
+                          #'   data in one call.
+                          #' @param X Data frame (or matrix) to encode.
+                          #' @return A numeric matrix, as returned by
+                          #'   `$transform()`.
                           fit_transform = function(X) {
+                            # fit puis transform en une seule fois
                             self$fit(X)
                             self$transform(X)
                           }
