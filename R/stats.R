@@ -1,4 +1,4 @@
-# Lambda de Wilks et test F de Rao (livre PADL, p. 60-62)
+# Lambda de Wilks, test F de Rao et test de Bartlett (livre PADL, p. 60-62)
 # W : covariance intra-classes (en 1/(n - K))
 # V : covariance totale (en 1/(n - 1))
 # n : nombre d'observations, K : nombre de classes
@@ -24,6 +24,13 @@ wilks_test <- function(W, V, n, K) {
   df2 <- A * B - C
   F_rao <- (1 - lambda^(1 / B)) / lambda^(1 / B) * df2 / df1
 
-  list(lambda = lambda, F = F_rao, df1 = df1, df2 = df2,
-       p_value = stats::pf(F_rao, df1, df2, lower.tail = FALSE))
+  # NOUVEAU : transformation de Bartlett (grands echantillons)
+  chi2 <- -(n - 1 - (p + K) / 2) * log(lambda)
+
+  list(lambda = lambda,
+       F = F_rao, df1 = df1, df2 = df2,
+       p_value = stats::pf(F_rao, df1, df2, lower.tail = FALSE),
+       bartlett = chi2,
+       bartlett_df = df1,
+       bartlett_p_value = stats::pchisq(chi2, df1, lower.tail = FALSE))
 }

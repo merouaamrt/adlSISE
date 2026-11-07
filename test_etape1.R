@@ -161,3 +161,23 @@ W2 <- m2$.__enclos_env__$private$FW
 V2 <- cov(iris[1:4])
 wilks_test(W2, V2, n = 150, K = 3)
 summary(manova(as.matrix(iris[1:4]) ~ iris$Species), test = "Wilks")
+
+
+
+
+
+
+
+
+# ---- Etape 2.1b : Wilks dans ADL ----
+devtools::load_all()
+m <- ADL$new()$fit(D[c("X1", "X2")], D$Groupe)
+m$wilks
+
+m2 <- ADL$new()$fit(iris[1:4], iris$Species)
+m2$wilks$lambda
+m2$wilks$p_value
+
+# avec une variable qualitative
+m3 <- ADL$new()$fit(warpbreaks[c("breaks", "wool")], warpbreaks$tension)
+m3$wilks$lambda

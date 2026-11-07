@@ -64,6 +64,10 @@ ADL <- R6::R6Class("ADL",
                        W_inv <- chol2inv(R)
                        dimnames(W_inv) <- dimnames(W)
 
+                       # Evaluation globale : lambda de Wilks (V = covariance totale)
+                       V <- stats::cov(M)
+                       wilks <- wilks_test(W, V, n, K)
+
                        # 6. Fonctions de classement
                        A <- W_inv %*% t(mu)
                        a0 <- log(pi_k) - 0.5 * colSums(t(mu) * A)
@@ -79,6 +83,8 @@ ADL <- R6::R6Class("ADL",
                        private$FMeans <- mu
                        private$FW <- W
                        private$FWinv <- W_inv
+                       private$FV <- V
+                       private$FWilks <- wilks
                        private$FCoef <- coef
                        private$FFitted <- TRUE
                        invisible(self)
@@ -123,7 +129,8 @@ ADL <- R6::R6Class("ADL",
                      classes = function() private$FClasses,
                      priors = function() private$FPriors,
                      means = function() private$FMeans,
-                     coefficients = function() private$FCoef
+                     coefficients = function() private$FCoef,
+                     wilks = function() private$FWilks
                    ),
 
                    private = list(
@@ -140,6 +147,8 @@ ADL <- R6::R6Class("ADL",
                      FMeans = NULL,
                      FW = NULL,
                      FWinv = NULL,
+                     FV = NULL,
+                     FWilks = NULL,
                      FCoef = NULL,
 
                      compute_priors = function(n_k, classes) {
