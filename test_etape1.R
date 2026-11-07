@@ -302,3 +302,21 @@ mw$predict(data.frame(breaks = 30, wool = "B"))
 # 6. validation croisee avec selection
 ADL$new(selection = "backward", alpha = 0.01)$cross_validate(
   iris[1:4], iris$Species, folds = 5, seed = 1)$accuracy
+
+
+
+
+# ---- Etape 2.5 : summary ----
+devtools::load_all()
+
+# DATA 1 : a comparer avec le livre p. 66 (figure 24)
+ADL$new()$fit(D[c("X1", "X2")], D$Groupe)$summary()
+
+# iris avec selection backward
+ADL$new(selection = "backward", alpha = 0.01)$fit(iris[1:4], iris$Species)$summary()
+
+# warpbreaks : variable numerique + qualitative
+ADL$new()$fit(warpbreaks[c("breaks", "wool")], warpbreaks$tension)$summary()
+
+# modele non entraine
+ADL$new()$summary()

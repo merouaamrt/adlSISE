@@ -84,6 +84,9 @@ ADL <- R6::R6Class("ADL",
                        private$FWilks <- est$wilks
                        private$FVarTests <- est$var_tests
                        private$FCoef <- est$coef
+                       pred <- max.col(cbind(1, M) %*% est$coef, ties.method = "first")
+                       private$FConfusion <- table(observe = y,
+                                                   predit = factor(classes[pred], levels = classes))
                        private$FFitted <- TRUE
                        invisible(self)
                      },
@@ -141,6 +144,64 @@ ADL <- R6::R6Class("ADL",
 
                        list(scores = scores, accuracy = mean(scores), error = 1 - mean(scores))
                      },
+                     # Resume detaille du modele
+                     summary = function(...) {
+                       if (!private$FFitted) {
+                         cat("Analyse Discriminante Lineaire (non entrainee)\n")
+                         return(invisible(self))
+                       }
+                       w <- private$FWilks
+                       coef <- private$FCoef
+                       vars <- rownames(coef)[-1]
+
+                       cat("==================================================\n")
+                       cat("  Analyse Discriminante Lineaire - Resume\n")
+                       cat("==================================================\n\n")
+                       cat("Observations :", private$FN, "\n")
+                       cat("Classes      :", paste0(private$FClasses, " (", private$FNk, ")",
+                                                    collapse = ", "), "\n")
+                       cat("Priors       :", paste0(private$FClasses, " = ",
+                                                    round(private$FPriors, 4), collapse = ", "), "\n\n")
+
+                       cat("--- Evaluation globale ---\n")
+                       cat(sprintf("Lambda de Wilks      : %.6f\n", w$lambda))
+                       cat(sprintf("F de Rao             : %.4f   ddl = (%g, %g)   p-value = %s\n",
+                                   w$F, w$df1, round(w$df2, 2), format.pval(w$p_value, digits = 4)))
+                       cat(sprintf("Khi-deux de Bartlett : %.4f   ddl = %g   p-value = %s\n\n",
+                                   w$bartlett, w$bartlett_df,
+                                   format.pval(w$bartlett_p_value, digits = 4)))
+
+                       cat("--- Fonctions de classement et pertinence des variables ---\n")
+                       tests <- private$FVarTests[vars, , drop = FALSE]
+                       tableau <- data.frame(round(coef[vars, , drop = FALSE], 6),
+                                             Wilks.L = round(tests$Wilks.L, 5),
+                                             Partial.L = round(tests$Partial.L, 5),
+                                             F = round(tests$F, 4),
+                                             p.value = signif(tests$p.value, 4),
+                                             row.names = vars, check.names = FALSE)
+                       print(tableau)
+                       cat("constante :", paste0(colnames(coef), " = ", round(coef[1, ], 6),
+                                                 collapse = ", "), "\n\n")
+
+                       if (!is.null(private$FSelectionResult)) {
+                         cat("--- Selection de variables :", private$FSelection,
+                             "(alpha =", private$FAlpha, ") ---\n")
+                         h <- private$FSelectionResult$history
+                         if (is.null(h)) {
+                           cat("Aucune variable retiree.\n")
+                         } else {
+                           print(h, row.names = FALSE, digits = 6)
+                         }
+                         cat("Variables retenues :", paste(private$FSelected, collapse = ", "), "\n\n")
+                       }
+
+                       cat("--- Matrice de confusion (donnees d'apprentissage) ---\n")
+                       print(private$FConfusion)
+                       erreur <- 1 - sum(diag(private$FConfusion)) / private$FN
+                       cat(sprintf("\nTaux d'erreur en resubstitution : %.4f\n", erreur))
+                       cat("(estimation optimiste : utilisez $cross_validate() pour une mesure honnete)\n")
+                       invisible(self)
+                     },
 
                      print = function(...) {
                        if (!private$FFitted) {
@@ -194,6 +255,7 @@ ADL <- R6::R6Class("ADL",
                      FWilks = NULL,
                      FVarTests = NULL,
                      FCoef = NULL,
+                     FConfusion = NULL,
 
                      compute_priors = function(n_k, classes) {
                        opt <- private$FPriorsOption
