@@ -266,3 +266,39 @@ backward_selection(priv(m2)$FW, priv(m2)$FV, n = 150, K = 3, alpha = 0.01)
 # warpbreaks : la laine doit etre retiree
 m3 <- ADL$new()$fit(warpbreaks[c("breaks", "wool")], warpbreaks$tension)
 backward_selection(priv(m3)$FW, priv(m3)$FV, n = 54, K = 3, alpha = 0.05)
+
+
+
+
+# ---- Etape 2.4b : selection dans fit ----
+devtools::load_all()
+
+# 1. sans selection : toujours les coefficients du livre
+round(ADL$new()$fit(D[c("X1", "X2")], D$Groupe)$coefficients, 6)
+
+# 2. DATA 1 en backward : garde X1 et X2
+mb <- ADL$new(selection = "backward")$fit(D[c("X1", "X2")], D$Groupe)
+mb$selected_variables
+
+# 3. DATA 1 en forward : aucune variable -> message clair
+try(ADL$new(selection = "forward")$fit(D[c("X1", "X2")], D$Groupe))
+
+# 4. iris en backward, alpha = 0.01 : Sepal.Length retiree
+mi <- ADL$new(selection = "backward", alpha = 0.01)$fit(iris[1:4], iris$Species)
+mi
+mi$selection_history
+# le modele doit etre identique a un modele appris directement sur les 3 variables
+all.equal(mi$coefficients,
+          ADL$new()$fit(iris[c("Sepal.Width", "Petal.Length", "Petal.Width")],
+                        iris$Species)$coefficients)
+mi$score(iris[1:4], iris$Species)
+
+# 5. warpbreaks en backward : seule breaks est gardee
+mw <- ADL$new(selection = "backward")$fit(warpbreaks[c("breaks", "wool")],
+                                          warpbreaks$tension)
+mw$selected_variables
+mw$predict(data.frame(breaks = 30, wool = "B"))
+
+# 6. validation croisee avec selection
+ADL$new(selection = "backward", alpha = 0.01)$cross_validate(
+  iris[1:4], iris$Species, folds = 5, seed = 1)$accuracy

@@ -35,59 +35,55 @@ ADL <- R6::R6Class("ADL",
                        K <- nlevels(y)
                        if (K < 2) stop("y doit comporter au moins 2 classes.")
 
-                       # NOUVEAU (1) - recodage des qualitatives par l'Encodeur
+                       # 2. Recodage des qualitatives par l'Encodeur
                        private$FEncodeur <- Encodeur$new()
                        M <- private$FEncodeur$fit_transform(X)
 
                        classes <- levels(y)
                        g <- as.integer(y)
                        n_k <- tabulate(g, nbins = K)
-
-                       # 2. Probabilites a priori
-                       pi_k <- private$compute_priors(n_k, classes)
-
-                       # 3. Moyennes conditionnelles
-                       mu <- rowsum(M, g) / n_k
-                       rownames(mu) <- classes
-
-                       # 4. Covariance intra-classes poolee W, en 1/(n - K)
                        n <- nrow(M)
                        if (n <= K) stop("Il faut plus d'observations que de classes.")
-                       centre <- M - mu[g, , drop = FALSE]
-                       W <- crossprod(centre) / (n - K)
 
-                       # 5. Inversion de W par Cholesky
-                       R <- tryCatch(chol(W), error = function(e) {
-                         stop("La matrice W n'est pas inversible : variables constantes ",
-                              "ou colineaires.", call. = FALSE)
-                       })
-                       W_inv <- chol2inv(R)
-                       dimnames(W_inv) <- dimnames(W)
+                       # 3. Probabilites a priori
+                       pi_k <- private$compute_priors(n_k, classes)
 
-                       # Evaluation globale : lambda de Wilks (V = covariance totale)
-                       V <- stats::cov(M)
-                       wilks <- wilks_test(W, V, n, K)
-                       var_tests <- variable_tests(W_inv, V, n, K, wilks$lambda)
+                       # 4. Estimation sur toutes les variables
+                       est <- private$estimate(M, g, n_k, pi_k, K, classes)
 
-                       # 6. Fonctions de classement
-                       A <- W_inv %*% t(mu)
-                       a0 <- log(pi_k) - 0.5 * colSums(t(mu) * A)
-                       coef <- rbind(constant = a0, A)
-                       colnames(coef) <- classes
+                       # 5. Selection de variables, puis nouvelle estimation
+                       sel <- NULL
+                       if (private$FSelection != "none") {
+                         methode <- if (private$FSelection == "forward") {
+                           forward_selection
+                         } else {
+                           backward_selection
+                         }
+                         sel <- methode(est$W, est$V, n, K, private$FAlpha)
+                         if (length(sel$selected) == 0) {
+                           stop("Aucune variable n'est significative au seuil alpha = ",
+                                private$FAlpha, " : augmentez 'alpha' ou essayez ",
+                                "selection = \"backward\".", call. = FALSE)
+                         }
+                         M <- M[, sel$selected, drop = FALSE]
+                         est <- private$estimate(M, g, n_k, pi_k, K, classes)
+                       }
 
-                       # Memorisation
+                       # 6. Memorisation
                        private$FN <- n
                        private$FNk <- stats::setNames(n_k, classes)
                        private$FVarNames <- colnames(X)
+                       private$FSelected <- colnames(M)
+                       private$FSelectionResult <- sel
                        private$FClasses <- classes
                        private$FPriors <- stats::setNames(pi_k, classes)
-                       private$FMeans <- mu
-                       private$FW <- W
-                       private$FWinv <- W_inv
-                       private$FV <- V
-                       private$FWilks <- wilks
-                       private$FVarTests <- var_tests
-                       private$FCoef <- coef
+                       private$FMeans <- est$mu
+                       private$FW <- est$W
+                       private$FWinv <- est$W_inv
+                       private$FV <- est$V
+                       private$FWilks <- est$wilks
+                       private$FVarTests <- est$var_tests
+                       private$FCoef <- est$coef
                        private$FFitted <- TRUE
                        invisible(self)
                      },
@@ -109,6 +105,7 @@ ADL <- R6::R6Class("ADL",
                        if (length(y) != nrow(X)) stop("X et y n'ont pas le meme nombre de lignes.")
                        mean(as.character(self$predict(X)) == as.character(y))
                      },
+
                      # Validation croisee stratifiee : score moyen sur des donnees non vues
                      cross_validate = function(X, y, folds = 5, seed = NULL) {
                        if (is.matrix(X)) X <- as.data.frame(X)
@@ -122,7 +119,7 @@ ADL <- R6::R6Class("ADL",
 
                        # numero de pli de chaque individu, en gardant les proportions des classes
                        if (folds == n) {
-                         groupe <- seq_len(n)                       # leave-one-out
+                         groupe <- seq_len(n)
                        } else {
                          groupe <- integer(n)
                          for (classe in levels(y)) {
@@ -131,7 +128,8 @@ ADL <- R6::R6Class("ADL",
                          }
                        }
 
-                       # pour chaque pli : apprendre sur les autres, tester sur celui-ci
+                       # pour chaque pli : apprendre sur les autres (selection comprise),
+                       # tester sur celui-ci
                        scores <- vapply(seq_len(folds), function(f) {
                          test <- groupe == f
                          modele <- ADL$new(priors = private$FPriorsOption,
@@ -153,6 +151,10 @@ ADL <- R6::R6Class("ADL",
                        cat("Analyse Discriminante Lineaire\n\n")
                        cat("Observations :", private$FN, "\n")
                        cat("Variables    :", length(private$FVarNames), "\n")
+                       if (!is.null(private$FSelectionResult)) {
+                         cat("Selection    :", private$FSelection, "(alpha =", private$FAlpha,
+                             ") ->", length(private$FSelected), "variable(s) retenue(s)\n")
+                       }
                        cat("Classes      :", paste0(private$FClasses, " (", private$FNk, ")",
                                                     collapse = ", "), "\n\n")
                        cat("Fonctions de classement :\n")
@@ -167,7 +169,9 @@ ADL <- R6::R6Class("ADL",
                      means = function() private$FMeans,
                      coefficients = function() private$FCoef,
                      wilks = function() private$FWilks,
-                     variable_tests = function() private$FVarTests
+                     variable_tests = function() private$FVarTests,
+                     selected_variables = function() private$FSelected,
+                     selection_history = function() private$FSelectionResult$history
                    ),
 
                    private = list(
@@ -175,10 +179,12 @@ ADL <- R6::R6Class("ADL",
                      FSelection = NULL,
                      FAlpha = NULL,
                      FFitted = FALSE,
-                     FEncodeur = NULL,   # NOUVEAU (2)
+                     FEncodeur = NULL,
                      FN = NULL,
                      FNk = NULL,
                      FVarNames = NULL,
+                     FSelected = NULL,
+                     FSelectionResult = NULL,
                      FClasses = NULL,
                      FPriors = NULL,
                      FMeans = NULL,
@@ -200,6 +206,41 @@ ADL <- R6::R6Class("ADL",
                        as.numeric(opt)
                      },
 
+                     # Tous les calculs du modele sur une matrice M (deja recodee)
+                     estimate = function(M, g, n_k, pi_k, K, classes) {
+                       n <- nrow(M)
+
+                       # moyennes conditionnelles
+                       mu <- rowsum(M, g) / n_k
+                       rownames(mu) <- classes
+
+                       # covariance intra-classes poolee W, en 1/(n - K)
+                       centre <- M - mu[g, , drop = FALSE]
+                       W <- crossprod(centre) / (n - K)
+
+                       # inversion de W par Cholesky
+                       R <- tryCatch(chol(W), error = function(e) {
+                         stop("La matrice W n'est pas inversible : variables constantes ",
+                              "ou colineaires.", call. = FALSE)
+                       })
+                       W_inv <- chol2inv(R)
+                       dimnames(W_inv) <- dimnames(W)
+
+                       # evaluation globale et test de chaque variable
+                       V <- stats::cov(M)
+                       wilks <- wilks_test(W, V, n, K)
+                       var_tests <- variable_tests(W_inv, V, n, K, wilks$lambda)
+
+                       # fonctions de classement
+                       A <- W_inv %*% t(mu)
+                       a0 <- log(pi_k) - 0.5 * colSums(t(mu) * A)
+                       coef <- rbind(constant = a0, A)
+                       colnames(coef) <- classes
+
+                       list(mu = mu, W = W, W_inv = W_inv, V = V,
+                            wilks = wilks, var_tests = var_tests, coef = coef)
+                     },
+
                      scores = function(X) {
                        if (!private$FFitted) {
                          stop("Le modele n'est pas entraine : appelez $fit() d'abord.")
@@ -211,8 +252,8 @@ ADL <- R6::R6Class("ADL",
                          stop("Colonnes absentes de X : ", paste(manquantes, collapse = ", "))
                        }
                        if (anyNA(X[private$FVarNames])) stop("X contient des valeurs manquantes.")
-                       # NOUVEAU (3) - meme recodage qu'au fit
-                       M <- private$FEncodeur$transform(X)
+                       # meme recodage qu'au fit, puis seulement les variables retenues
+                       M <- private$FEncodeur$transform(X)[, private$FSelected, drop = FALSE]
                        cbind(1, M) %*% private$FCoef
                      }
                    )
