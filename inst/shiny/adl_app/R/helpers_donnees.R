@@ -8,7 +8,7 @@ SEUIL_CLASSES <- 20   # au-dela, la cible n'est pas consideree comme categoriell
 
 # Lit un fichier CSV/TXT ou Excel et renvoie un data.frame propre.
 lire_donnees <- function(chemin, nom = basename(chemin), sep = "\t", dec = ".",
-                         entete = TRUE, feuille = 1) {
+                         entete = TRUE, feuille = 1, colonnes_min = 2) {
   if (is.null(chemin) || !file.exists(chemin)) {
     stop("Le fichier est introuvable.", call. = FALSE)
   }
@@ -49,7 +49,7 @@ lire_donnees <- function(chemin, nom = basename(chemin), sep = "\t", dec = ".",
   d <- d[rowSums(!is.na(d)) > 0, colSums(!is.na(d)) > 0, drop = FALSE]
   rownames(d) <- NULL
 
-  if (ncol(d) < 2) {
+  if (ncol(d) < colonnes_min) {
     stop("Une seule colonne détectée : le séparateur choisi n'est probablement pas le bon.",
          call. = FALSE)
   }

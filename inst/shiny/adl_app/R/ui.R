@@ -112,6 +112,26 @@ ui_onglet_illustratives <- function() {
            textOutput("illus_test"), plotOutput("illus_plot", height = "340px"))
 }
 
+ui_onglet_deploiement <- function() {
+  tabPanel("Déploiement", value = "deploiement",
+    h3("Utiliser le modèle"),
+    tabsetPanel(id = "mode_deploiement",
+      tabPanel("Un individu",
+        p(class = "indice", "Renseignez les variables explicatives du modèle."),
+        uiOutput("formulaire"),
+        actionButton("predire_ind", "Classer cet individu", class = "btn-primary"),
+        br(), br(), uiOutput("ind_carte"),
+        fluidRow(column(5, tableOutput("ind_table")), column(7, plotOutput("ind_plot", height = "260px")))),
+      tabPanel("Un fichier",
+        p(class = "indice", "Le fichier doit contenir les colonnes des variables explicatives (mêmes noms)."),
+        fileInput("nouveaux", NULL, accept = c(".csv", ".txt", ".tsv", ".xlsx", ".xls"),
+                  buttonLabel = "Parcourir…", placeholder = "Nouveaux individus"),
+        fluidRow(column(6, selectInput("sep_n", "Séparateur de colonnes (CSV)", SEPARATEURS, selected = "	")),
+                 column(6, selectInput("dec_n", "Séparateur décimal", c("Point ( . )" = ".", "Virgule ( , )" = ",")))),
+        uiOutput("fichier_message"), uiOutput("fichier_telechargement"), br(),
+        div(class = "defilement", tableOutput("fichier_table")))))
+}
+
 # Zone principale : alerte + onglets
 ui_zone_principale <- function() {
   mainPanel(
@@ -125,7 +145,8 @@ ui_zone_principale <- function() {
 ui_liste_onglets <- function() {
   list(ui_onglet_apercu(), ui_onglet_resume(), ui_onglet_evaluation(),
        ui_onglet_coefficients(), ui_onglet_pertinence(), ui_onglet_selection(),
-       ui_onglet_confusion(), ui_onglet_validation(), ui_onglet_illustratives())
+       ui_onglet_confusion(), ui_onglet_validation(), ui_onglet_illustratives(),
+       ui_onglet_deploiement())
 }
 
 ui_principale <- function() {

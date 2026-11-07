@@ -124,4 +124,5 @@ serveur_principal <- function(input, output, session) {
   serveur_resultats(output, resultat)
   cv <- serveur_validation_croisee(input, output, resultat)
   serveur_illustratives(input, output, resultat)
+  pred_fichier <- serveur_deploiement(input, output, resultat)
 }
