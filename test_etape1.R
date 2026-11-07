@@ -117,3 +117,26 @@ m3$predict(data.frame(breaks = 30, wool = "C"))   # modalite inconnue
 # on n'a rien casse : DATA 1 et iris
 round(ADL$new()$fit(D[c("X1", "X2")], D$Groupe)$coefficients, 6)
 ADL$new()$fit(iris[1:4], iris$Species)$score(iris[1:4], iris$Species)
+
+
+
+
+
+# ---- Etape 1.8a : vitesse ----
+devtools::load_all()
+set.seed(1)                                   # pour avoir toujours les memes donnees
+n <- 1e6                                      # 1 million de lignes
+Xg <- as.data.frame(matrix(rnorm(n * 20), n, 20))
+yg <- factor(sample(c("A", "B", "C"), n, replace = TRUE))
+Xg$V1 <- Xg$V1 + as.integer(yg)               # V1 aide a reconnaitre la classe
+Xg$cat <- sample(c("x", "y", "z"), n, replace = TRUE)
+
+# notre classe : 20 numeriques + 1 qualitative
+system.time(mg <- ADL$new()$fit(Xg, yg))
+system.time(pg <- mg$predict(Xg))
+mg$score(Xg, yg)
+
+# comparaison avec MASS::lda (20 numeriques)
+num <- paste0("V", 1:20)
+system.time(ADL$new()$fit(Xg[num], yg))
+system.time(MASS::lda(x = as.matrix(Xg[num]), grouping = yg))
