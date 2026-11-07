@@ -104,7 +104,7 @@ graphique_confusion <- function(cm) {
     graphics::text(j, k + 1 - i, m[i, j], cex = 1.4,
                    col = if (part[i, j] > 0.5) "white" else "#1f2d3d")
   }
-  graphics::mtext("Classe observée", side = 2, line = op$mar[2] - 1.5)
+  graphics::mtext("Classe observée", side = 2, line = max(nchar(rownames(m))) * 0.6 + 1)
 }
 
 # Validation croisee : un tableau (un pli par ligne) et un graphique
