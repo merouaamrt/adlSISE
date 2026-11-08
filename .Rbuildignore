@@ -2,3 +2,5 @@
 ^\.Rproj\.user$
 ^test_etape1\.R$
 ^graphify-out$
+^data-raw$
+^etude_de_cas$
