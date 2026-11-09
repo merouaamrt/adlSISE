@@ -126,7 +126,7 @@ ui_onglet_deploiement <- function() {
         p(class = "indice", "Le fichier doit contenir les colonnes des variables explicatives (mêmes noms)."),
         fileInput("nouveaux", NULL, accept = c(".csv", ".txt", ".tsv", ".xlsx", ".xls"),
                   buttonLabel = "Parcourir…", placeholder = "Nouveaux individus"),
-        fluidRow(column(6, selectInput("sep_n", "Séparateur de colonnes (CSV)", SEPARATEURS, selected = "	")),
+        fluidRow(column(6, selectInput("sep_n", "Séparateur de colonnes (CSV)", SEPARATEURS, selected = "\t")),
                  column(6, selectInput("dec_n", "Séparateur décimal", c("Point ( . )" = ".", "Virgule ( , )" = ",")))),
         uiOutput("fichier_message"), uiOutput("fichier_telechargement"), br(),
         div(class = "defilement", tableOutput("fichier_table")))))
