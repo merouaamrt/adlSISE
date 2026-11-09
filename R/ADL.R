@@ -117,6 +117,31 @@ ADL <- R6::R6Class("ADL",
                        # 3. Probabilites a priori
                        pi_k <- private$compute_priors(n_k, classes)
 
+                       # Verification de la colinearite avant la selection
+                       if (private$FSelection != "none") {
+
+                         # Centrage des variables par rapport a leur classe
+                         moyennes <- rowsum(M, g) / n_k
+                         M_centre <- M - moyennes[g, , drop = FALSE]
+
+                         # Detection des colonnes lineairement dependantes
+                         decomposition <- qr(M_centre)
+
+                         if (decomposition$rank == 0) {
+                           stop("Aucune variable exploitable pour la selection.")
+                         }
+
+                         # Conservation des colonnes independantes
+                         if (decomposition$rank < ncol(M)) {
+                           indices <- sort(
+                             decomposition$pivot[seq_len(decomposition$rank)]
+                           )
+
+                           M <- M[, indices, drop = FALSE]
+                         }
+                       }
+
+
                        # 4. Estimation sur toutes les variables
                        est <- private$estimate(M, g, n_k, pi_k, K, classes)
 
@@ -216,6 +241,15 @@ ADL <- R6::R6Class("ADL",
                        if (folds < 2 || folds > n) {
                          stop("'folds' doit etre compris entre 2 et le nombre d'observations.")
                        }
+
+                       # Verification du nombre de plis par rapport aux effectifs des classes
+                       # Le leave-one-out (folds = n) reste autorise
+                       if (folds != n && folds > min(table(y))) {
+                         stop("Nombre de plis impossible : chaque classe doit contenir au moins autant d'individus que de plis.")
+                       }
+
+
+
                        if (!is.null(seed)) set.seed(seed)
 
                        # numero de pli de chaque individu, en gardant les proportions des classes
@@ -240,7 +274,10 @@ ADL <- R6::R6Class("ADL",
                          modele$score(X[test, , drop = FALSE], y[test])
                        }, numeric(1))
 
-                       list(scores = scores, accuracy = mean(scores), error = 1 - mean(scores))
+                       # Moyenne ponderee selon le nombre d'individus par pli
+                       accuracy <- weighted.mean(scores, tabulate(groupe, nbins = folds))
+
+                       list(scores = scores, accuracy = accuracy, error = 1 - accuracy)
                      },
                      #' @description Print a detailed summary of the trained
                      #'   model: class sizes, priors, Wilks' lambda tests,
