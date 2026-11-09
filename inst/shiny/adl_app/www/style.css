@@ -1,0 +1,33 @@
+/* Apparence de l'application ADL */
+body { background: #f4f6f9; color: #1f2d3d; }
+.bandeau { background: linear-gradient(90deg, #1f4e79, #2a7f9e); color: #fff;
+  margin: 0 -15px 20px; padding: 18px 30px; }
+.bandeau h1 { margin: 0 0 4px; font-size: 26px; font-weight: 600; }
+.bandeau p { margin: 0; opacity: .9; }
+.well { background: #fff; border: 1px solid #dde3ea; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+.etape { border-bottom: 1px solid #e8edf2; margin-bottom: 14px; padding-bottom: 6px; }
+.etape h4 { color: #1f4e79; font-size: 16px; font-weight: 600; margin-top: 0; }
+.num { display: inline-block; width: 24px; height: 24px; line-height: 24px; margin-right: 8px;
+  text-align: center; border-radius: 50%; background: #1f4e79; color: #fff; font-size: 13px; }
+.btn-primary { background: #1f4e79; border-color: #1f4e79; }
+.btn-primary:hover { background: #2a7f9e; border-color: #2a7f9e; }
+.nav-tabs > li > a { color: #1f4e79; }
+.tab-content { background: #fff; border: 1px solid #dde3ea; border-top: 0; border-radius: 0 0 8px 8px; padding: 18px 22px; }
+.tab-content h3 { color: #1f4e79; font-size: 19px; margin-top: 18px; }
+.tab-content h3:first-child { margin-top: 0; }
+.indice { color: #5b6b7b; }
+.defilement { overflow-x: auto; }
+table { font-size: 13px; }
+.alerte { border-radius: 6px; padding: 10px 16px; margin-bottom: 14px; border-left: 5px solid; }
+.alerte p { margin: 2px 0 0; }
+.alerte-danger { background: #fdecea; border-color: #c0392b; color: #7b241c; }
+.alerte-info { background: #e8f4fd; border-color: #2a7f9e; color: #154360; }
+.alerte-succes { background: #e9f7ef; border-color: #1e8449; color: #145a32; }
+.cartes { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+.carte { flex: 1 1 150px; background: #f4f8fb; border: 1px solid #dde3ea; border-radius: 8px; padding: 10px 14px; }
+.carte .valeur { font-size: 24px; font-weight: 600; color: #1f4e79; }
+.carte .legende { font-size: 12px; color: #5b6b7b; text-transform: uppercase; letter-spacing: .04em; }
+.prediction { background: #e9f7ef; border: 1px solid #1e8449; border-radius: 8px; padding: 12px 18px; margin-bottom: 12px; }
+.prediction .valeur { font-size: 26px; font-weight: 600; color: #145a32; }
+.shiny-output-error-validation { color: #5b6b7b; font-style: italic; }
+pre.shiny-text-output { font-size: 12px; }

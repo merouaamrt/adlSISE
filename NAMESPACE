@@ -2,4 +2,5 @@
 
 export(ADL)
 export(Encodeur)
+export(run_app)
 importFrom(R6,R6Class)
