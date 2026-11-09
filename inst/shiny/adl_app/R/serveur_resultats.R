@@ -26,7 +26,8 @@ serveur_resultats <- function(output, resultat) {
     div(class = "cartes",
         carte(nrow(r$X), "Individus"),
         carte(length(m$classes), "Classes"),
-        carte(paste(length(m$selected_variables), "/", ncol(r$modele$means)), "Variables retenues"),
+                carte(paste(length(m$selected_variables), "/",
+                    ncol(adlSISE::Encodeur$new()$fit_transform(r$X))), "Variables retenues"),
         carte(paste0(fmt_num(100 * taux_erreur(m$confusion), 1), " %"), "Erreur (resubstitution)"))
   })
   output$resume_classes <- renderTable(table_classes(res()$modele, res()$y), striped = TRUE)
