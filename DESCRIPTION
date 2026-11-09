@@ -3,7 +3,8 @@ Title: Predictive Linear Discriminant Analysis with R6 Classes
 Version: 0.0.0.9000
 Authors@R: c(
     person("Mounir", "Bekkar", , "mounirbekkar23@gmail.com", role = c("aut", "cre")),
-    person("Meroua", role = "aut")
+    person("Meroua", "Amirat", role = "aut"),
+    person("Yacine", "Zahi", role = "aut")
   )
 Description: Implements predictive linear discriminant analysis as an R6
     class. Qualitative predictors are recoded into dummy variables. The
