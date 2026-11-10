@@ -238,15 +238,39 @@ ADL <- R6::R6Class("ADL",
                        y <- as.factor(y)
                        n <- nrow(X)
                        if (length(y) != n) stop("X et y n'ont pas le meme nombre de lignes.")
-                       if (folds < 2 || folds > n) {
-                         stop("'folds' doit etre compris entre 2 et le nombre d'observations.")
+                       # Verification du nombre de plis
+                       # Il doit etre numerique, entier, fini et compris entre 2 et n
+                       if (length(folds) != 1L ||
+                           !is.numeric(folds) ||
+                           !is.finite(folds) ||
+                           folds != floor(folds) ||
+                           folds < 2 ||
+                           folds > n) {
+
+                         stop(
+                           "'folds' doit etre un entier compris entre 2 et le nombre d'observations.",
+                           call. = FALSE
+                         )
                        }
 
-                       # Verification du nombre de plis par rapport aux effectifs des classes
-                       # Le leave-one-out (folds = n) reste autorise
-                       if (folds != n && folds > min(table(y))) {
-                         stop("Nombre de plis impossible : chaque classe doit contenir au moins autant d'individus que de plis.")
+                       # Verification des effectifs des classes
+                       y <- droplevels(y)
+
+                       if (anyNA(y)) {
+                         stop("y contient des valeurs manquantes.", call. = FALSE)
                        }
+
+                       if (nlevels(y) < 2) {
+                         stop("La validation croisee necessite au moins 2 classes.",
+                              call. = FALSE)
+                       }
+
+                       if (any(table(y) < 2)) {
+                         stop("La validation croisee necessite au moins 2 observations par classe.",
+                              call. = FALSE)
+                       }
+
+
 
 
 
@@ -254,12 +278,33 @@ ADL <- R6::R6Class("ADL",
 
                        # numero de pli de chaque individu, en gardant les proportions des classes
                        if (folds == n) {
+                         # Leave-One-Out : un individu par pli
                          groupe <- seq_len(n)
+
                        } else {
                          groupe <- integer(n)
-                         for (classe in levels(y)) {
-                           ind <- which(y == classe)
-                           groupe[ind] <- sample(rep(seq_len(folds), length.out = length(ind)))
+
+                         if (folds <= min(table(y))) {
+
+                           # Cas classique : repartition stratifiee par classe
+                           for (classe in levels(y)) {
+                             ind <- which(y == classe)
+
+                             groupe[ind] <- sample(
+                               rep(seq_len(folds), length.out = length(ind))
+                             )
+                           }
+
+                         } else {
+
+                           # Classes desequilibrees :
+                           # repartir les individus sur tous les plis
+                           ordre <- unlist(lapply(levels(y), function(classe) {
+                             ind <- which(y == classe)
+                             ind[sample.int(length(ind))]
+                           }), use.names = FALSE)
+
+                           groupe[ordre] <- rep(seq_len(folds), length.out = n)
                          }
                        }
 
