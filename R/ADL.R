@@ -117,6 +117,31 @@ ADL <- R6::R6Class("ADL",
                        # 3. Probabilites a priori
                        pi_k <- private$compute_priors(n_k, classes)
 
+                       # Verification de la colinearite avant la selection
+                       if (private$FSelection != "none") {
+
+                         # Centrage des variables par rapport a leur classe
+                         moyennes <- rowsum(M, g) / n_k
+                         M_centre <- M - moyennes[g, , drop = FALSE]
+
+                         # Detection des colonnes lineairement dependantes
+                         decomposition <- qr(M_centre)
+
+                         if (decomposition$rank == 0) {
+                           stop("Aucune variable exploitable pour la selection.")
+                         }
+
+                         # Conservation des colonnes independantes
+                         if (decomposition$rank < ncol(M)) {
+                           indices <- sort(
+                             decomposition$pivot[seq_len(decomposition$rank)]
+                           )
+
+                           M <- M[, indices, drop = FALSE]
+                         }
+                       }
+
+
                        # 4. Estimation sur toutes les variables
                        est <- private$estimate(M, g, n_k, pi_k, K, classes)
 
@@ -213,19 +238,73 @@ ADL <- R6::R6Class("ADL",
                        y <- as.factor(y)
                        n <- nrow(X)
                        if (length(y) != n) stop("X et y n'ont pas le meme nombre de lignes.")
-                       if (folds < 2 || folds > n) {
-                         stop("'folds' doit etre compris entre 2 et le nombre d'observations.")
+                       # Verification du nombre de plis
+                       # Il doit etre numerique, entier, fini et compris entre 2 et n
+                       if (length(folds) != 1L ||
+                           !is.numeric(folds) ||
+                           !is.finite(folds) ||
+                           folds != floor(folds) ||
+                           folds < 2 ||
+                           folds > n) {
+
+                         stop(
+                           "'folds' doit etre un entier compris entre 2 et le nombre d'observations.",
+                           call. = FALSE
+                         )
                        }
+
+                       # Verification des effectifs des classes
+                       y <- droplevels(y)
+
+                       if (anyNA(y)) {
+                         stop("y contient des valeurs manquantes.", call. = FALSE)
+                       }
+
+                       if (nlevels(y) < 2) {
+                         stop("La validation croisee necessite au moins 2 classes.",
+                              call. = FALSE)
+                       }
+
+                       if (any(table(y) < 2)) {
+                         stop("La validation croisee necessite au moins 2 observations par classe.",
+                              call. = FALSE)
+                       }
+
+
+
+
+
                        if (!is.null(seed)) set.seed(seed)
 
                        # numero de pli de chaque individu, en gardant les proportions des classes
                        if (folds == n) {
+                         # Leave-One-Out : un individu par pli
                          groupe <- seq_len(n)
+
                        } else {
                          groupe <- integer(n)
-                         for (classe in levels(y)) {
-                           ind <- which(y == classe)
-                           groupe[ind] <- sample(rep(seq_len(folds), length.out = length(ind)))
+
+                         if (folds <= min(table(y))) {
+
+                           # Cas classique : repartition stratifiee par classe
+                           for (classe in levels(y)) {
+                             ind <- which(y == classe)
+
+                             groupe[ind] <- sample(
+                               rep(seq_len(folds), length.out = length(ind))
+                             )
+                           }
+
+                         } else {
+
+                           # Classes desequilibrees :
+                           # repartir les individus sur tous les plis
+                           ordre <- unlist(lapply(levels(y), function(classe) {
+                             ind <- which(y == classe)
+                             ind[sample.int(length(ind))]
+                           }), use.names = FALSE)
+
+                           groupe[ordre] <- rep(seq_len(folds), length.out = n)
                          }
                        }
 
@@ -240,7 +319,10 @@ ADL <- R6::R6Class("ADL",
                          modele$score(X[test, , drop = FALSE], y[test])
                        }, numeric(1))
 
-                       list(scores = scores, accuracy = mean(scores), error = 1 - mean(scores))
+                       # Moyenne ponderee selon le nombre d'individus par pli
+                       accuracy <- weighted.mean(scores, tabulate(groupe, nbins = folds))
+
+                       list(scores = scores, accuracy = accuracy, error = 1 - accuracy)
                      },
                      #' @description Print a detailed summary of the trained
                      #'   model: class sizes, priors, Wilks' lambda tests,
