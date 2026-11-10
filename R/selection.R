@@ -75,9 +75,20 @@ backward_selection <- function(W, V, n, K, alpha = 0.05) {
     q <- length(gardees)
 
     # lambda du modele si on retire chaque variable
-    lambda_sans <- vapply(gardees,
-                          function(j) lambda_subset(Wb, Vb, setdiff(gardees, j)),
-                          numeric(1))
+
+
+    # Retirer temporairement chaque variable candidate
+    # avec une indexation directe
+    lambda_sans <- vapply(
+      gardees,
+      function(j) {
+        restantes <- gardees[gardees != j]
+        lambda_subset(Wb, Vb, restantes)
+      },
+      numeric(1)
+    )
+
+
     F_val <- (n - K - q + 1) / (K - 1) * (lambda_sans / lambda - 1)
     p_val <- stats::pf(F_val, K - 1, n - K - q + 1, lower.tail = FALSE)
 
