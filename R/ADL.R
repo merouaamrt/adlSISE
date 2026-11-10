@@ -2,9 +2,71 @@
 NULL
 
 #' Predictive Linear Discriminant Analysis
+#'
+#' @description
+#' R6 class implementing predictive linear discriminant analysis (LDA).
+#' The model estimates one linear classification function per class from
+#' the pooled within-class covariance matrix and assigns each observation
+#' to the class with the highest score. Qualitative predictors are
+#' automatically recoded into 0/1 dummy variables with [Encodeur].
+#' Optional forward or backward stepwise selection keeps only the
+#' variables that are significant according to Wilks' lambda F tests.
+#'
+#' @field classes Character vector of the class labels (read-only).
+#' @field priors Named numeric vector of the prior probabilities (read-only).
+#' @field means Matrix of the class-conditional means, one row per class
+#'   (read-only).
+#' @field coefficients Matrix of the classification functions: the first
+#'   row is the constant, the other rows are the variable coefficients and
+#'   there is one column per class (read-only).
+#' @field wilks List with Wilks' lambda, Rao's F test and Bartlett's
+#'   chi-squared test of the global model (read-only).
+#' @field variable_tests Data frame with, for each variable, Wilks' lambda
+#'   without the variable, the partial lambda, the F statistic and its
+#'   p-value (read-only).
+#' @field selected_variables Character vector of the variables used by the
+#'   final model (read-only).
+#' @field selection_history Data frame describing each step of the
+#'   variable selection, or `NULL` when no selection was done (read-only).
+#' @field confusion Confusion matrix (a `table`) of the observed classes
+#'   versus the classes predicted on the training data (read-only).
+#'
+#' @examples
+#' model <- ADL$new()
+#' model$fit(iris[, 1:4], iris$Species)
+#' model
+#' model$coefficients
+#' model$confusion
+#'
+#' # predictions and posterior probabilities
+#' head(model$predict(iris[, 1:4]))
+#' head(round(model$predict_proba(iris[, 1:4]), 4))
+#' model$score(iris[, 1:4], iris$Species)
+#'
+#' # detailed summary with the statistical tests
+#' model$summary()
+#'
+#' # uniform priors and forward selection of the variables
+#' model2 <- ADL$new(priors = "uniform", selection = "forward")
+#' model2$fit(iris[, 1:4], iris$Species)
+#' model2$selected_variables
+#'
+#' # stratified 5-fold cross-validation
+#' model$cross_validate(iris[, 1:4], iris$Species, folds = 5, seed = 1)$accuracy
 #' @export
 ADL <- R6::R6Class("ADL",
                    public = list(
+                     #' @description Create a new (untrained) LDA model.
+                     #' @param priors Prior probabilities of the classes:
+                     #'   `"proportional"` (class frequencies in the training
+                     #'   data), `"uniform"` (equal priors) or a numeric vector
+                     #'   of non-negative values summing to 1, in the order of
+                     #'   the class levels.
+                     #' @param selection Variable selection method: `"none"`,
+                     #'   `"forward"` or `"backward"`.
+                     #' @param alpha Significance level used by the variable
+                     #'   selection, strictly between 0 and 1.
+                     #' @return A new `ADL` object.
                      initialize = function(priors = "proportional", selection = "none",
                                            alpha = 0.05) {
                        if (is.character(priors)) {
@@ -24,6 +86,13 @@ ADL <- R6::R6Class("ADL",
                        invisible(self)
                      },
 
+                     #' @description Train the model.
+                     #' @param X Data frame (or matrix) of predictors, numeric
+                     #'   and/or qualitative, without missing values.
+                     #' @param y Vector or factor of the classes, with at least
+                     #'   two levels and one value per row of `X`.
+                     #' @return The `ADL` object itself, invisibly (so calls
+                     #'   can be chained).
                      fit = function(X, y) {
                        # 1. Verification des entrees
                        if (is.matrix(X)) X <- as.data.frame(X)
@@ -91,25 +160,54 @@ ADL <- R6::R6Class("ADL",
                        invisible(self)
                      },
 
+                     #' @description Predict the class of new observations.
+                     #' @param X Data frame (or matrix) with the same columns as
+                     #'   the training data.
+                     #' @return A factor of predicted classes, one per row of `X`.
                      predict = function(X) {
+                       # classe de plus grand score de classement
                        S <- private$scores(X)
                        factor(private$FClasses[max.col(S, ties.method = "first")],
                               levels = private$FClasses)
                      },
 
+                     #' @description Compute the posterior probabilities of the
+                     #'   classes for new observations.
+                     #' @param X Data frame (or matrix) with the same columns as
+                     #'   the training data.
+                     #' @return A numeric matrix with one row per observation and
+                     #'   one column per class; each row sums to 1.
                      predict_proba = function(X) {
+                       # softmax des scores ; on retire le max de chaque ligne
+                       # pour eviter un depassement numerique dans exp()
                        S <- private$scores(X)
                        S <- S - apply(S, 1, max)
                        P <- exp(S)
                        P / rowSums(P)
                      },
 
+                     #' @description Compute the accuracy (proportion of correctly
+                     #'   classified observations).
+                     #' @param X Data frame (or matrix) of predictors.
+                     #' @param y Observed classes, one per row of `X`.
+                     #' @return A number between 0 and 1.
                      score = function(X, y) {
                        if (length(y) != nrow(X)) stop("X et y n'ont pas le meme nombre de lignes.")
                        mean(as.character(self$predict(X)) == as.character(y))
                      },
 
-                     # Validation croisee stratifiee : score moyen sur des donnees non vues
+                     #' @description Estimate the accuracy by stratified
+                     #'   k-fold cross-validation. The model is refitted on each
+                     #'   training fold with the same options (priors, selection
+                     #'   and alpha), so the variable selection is included in
+                     #'   the validation.
+                     #' @param X Data frame (or matrix) of predictors.
+                     #' @param y Observed classes, one per row of `X`.
+                     #' @param folds Number of folds, between 2 and `nrow(X)`
+                     #'   (`folds = nrow(X)` gives leave-one-out).
+                     #' @param seed Optional random seed, for reproducible folds.
+                     #' @return A list with `scores` (accuracy of each fold),
+                     #'   `accuracy` (mean accuracy) and `error` (1 - accuracy).
                      cross_validate = function(X, y, folds = 5, seed = NULL) {
                        if (is.matrix(X)) X <- as.data.frame(X)
                        y <- as.factor(y)
@@ -144,7 +242,12 @@ ADL <- R6::R6Class("ADL",
 
                        list(scores = scores, accuracy = mean(scores), error = 1 - mean(scores))
                      },
-                     # Resume detaille du modele
+                     #' @description Print a detailed summary of the trained
+                     #'   model: class sizes, priors, Wilks' lambda tests,
+                     #'   classification functions with the F test of each
+                     #'   variable, selection steps and confusion matrix.
+                     #' @param ... Not used.
+                     #' @return The `ADL` object itself, invisibly.
                      summary = function(...) {
                        if (!private$FFitted) {
                          cat("Analyse Discriminante Lineaire (non entrainee)\n")
@@ -203,6 +306,10 @@ ADL <- R6::R6Class("ADL",
                        invisible(self)
                      },
 
+                     #' @description Print a short description of the model and
+                     #'   its classification functions.
+                     #' @param ... Not used.
+                     #' @return The `ADL` object itself, invisibly.
                      print = function(...) {
                        if (!private$FFitted) {
                          cat("Analyse Discriminante Lineaire (non entrainee)\n")
@@ -224,6 +331,8 @@ ADL <- R6::R6Class("ADL",
                      }
                    ),
 
+                   # Proprietes en lecture seule : sans argument 'value',
+                   # toute affectation (m$priors <- ...) provoque une erreur
                    active = list(
                      classes = function() private$FClasses,
                      priors = function() private$FPriors,
@@ -232,9 +341,11 @@ ADL <- R6::R6Class("ADL",
                      wilks = function() private$FWilks,
                      variable_tests = function() private$FVarTests,
                      selected_variables = function() private$FSelected,
-                     selection_history = function() private$FSelectionResult$history
+                     selection_history = function() private$FSelectionResult$history,
+                     confusion = function() private$FConfusion
                    ),
 
+                   # Etat interne : options, resultats du fit et calculs
                    private = list(
                      FPriorsOption = NULL,
                      FSelection = NULL,
@@ -257,6 +368,7 @@ ADL <- R6::R6Class("ADL",
                      FCoef = NULL,
                      FConfusion = NULL,
 
+                     # Probabilites a priori selon l'option choisie au constructeur
                      compute_priors = function(n_k, classes) {
                        opt <- private$FPriorsOption
                        K <- length(classes)
@@ -303,6 +415,7 @@ ADL <- R6::R6Class("ADL",
                             wilks = wilks, var_tests = var_tests, coef = coef)
                      },
 
+                     # Scores de classement : [1, x] %*% coefficients, une colonne par classe
                      scores = function(X) {
                        if (!private$FFitted) {
                          stop("Le modele n'est pas entraine : appelez $fit() d'abord.")

@@ -1,3 +1,5 @@
+# Fonctions statistiques internes : lambda de Wilks global et test F de chaque variable.
+
 # Lambda de Wilks, test F de Rao et test de Bartlett (livre PADL, p. 60-62)
 # W : covariance intra-classes (en 1/(n - K))
 # V : covariance totale (en 1/(n - 1))

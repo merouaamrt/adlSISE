@@ -1,16 +1,28 @@
 Package: adlSISE
-Title: What the Package Does (One Line, Title Case)
+Title: Predictive Linear Discriminant Analysis with R6 Classes
 Version: 0.0.0.9000
-Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
-Config/roxygen2/version: 8.1.1
+Authors@R: c(
+    person("Mounir", "Bekkar", , "mounirbekkar23@gmail.com", role = c("aut", "cre")),
+    person("Meroua", "Amirat", role = "aut"),
+    person("Yacine", "Zahi", role = "aut")
+  )
+Description: Implements predictive linear discriminant analysis as an R6
+    class. Qualitative predictors are recoded into dummy variables. The
+    package computes classification functions, Wilks' lambda with Rao's F
+    and Bartlett's chi-squared tests, per-variable F tests, forward and
+    backward stepwise variable selection, stratified cross-validation and
+    the confusion matrix.
+License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
+Config/roxygen2/version: 8.1.1
 Imports: 
     R6,
+    shiny,
     stats
 Suggests: 
-    MASS
+    MASS,
+    readxl,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+LazyData: true
